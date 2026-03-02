@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+data/
+*.pyc
+.env
+dist/
+*.egg-info/
+NOTES.md
