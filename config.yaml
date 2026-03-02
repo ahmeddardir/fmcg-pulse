@@ -1,0 +1,25 @@
+pipeline:
+  market: "Germany"
+
+paths:
+  raw_dir: "data/raw"
+  output_dir: "data/output"
+
+generation:
+  n_transactions: 50000
+  n_products: 300
+  start_date: "2025-01-01"
+  end_date: "2025-03-31"
+
+quality:
+  max_null_pct: 0.05
+  min_transactions: 100
+  min_price: 1.0
+  max_price: 2000.0
+
+reporting:
+  reports:
+    - name: "category_performance"
+      dimensions: ["category", "sub_category"]
+    - name: "brand_performance"
+      dimensions: ["category", "brand", "manufacturer"]
