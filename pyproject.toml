@@ -2,7 +2,7 @@
 name = "fmcg-pulse"
 version = "0.1.0"
 description = "FMCG retail analytics pipeline"
-requires-python = ">=3.11"
+requires-python = ">=3.13"
 
 dependencies = [
     "polars>=0.20.0",
