@@ -1,0 +1,21 @@
+line-length = 88
+
+[lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes (unused imports, undefined names)
+    "UP",   # pyupgrade (modernize Python syntax)
+    "I",    # isort (import ordering)
+    "B",    # flake8-bugbear (common bugs)
+    "SIM",  # flake8-simplify (simplifiable code)
+    "TCH",  # type-checking imports
+    "RET",  # return statement patterns
+]
+
+ignore = [
+    "SIM108",  # ternary operator (if/else is sometimes more readable)
+]
+
+[lint.per-file-ignores]
+"tests/*" = ["F811"]  # allow fixture redefinition in tests
