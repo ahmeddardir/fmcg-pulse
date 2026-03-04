@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import date
+from enum import StrEnum
 from pathlib import Path
 
 
@@ -27,6 +28,26 @@ class PathsConfig:
         self.raw_dir = Path(self.raw_dir)
         self.output_dir = Path(self.output_dir)
         self.logs_dir = Path(self.logs_dir)
+
+
+class LogLevel(StrEnum):
+    DEBUG = "DEBUG"
+    INFO = "INFO"
+    WARNING = "WARNING"
+    ERROR = "ERROR"
+    CRITICAL = "CRITICAL"
+
+
+@dataclass
+class LoggingConfig:
+    log_level: LogLevel
+    standard_format: str
+    json_format: str
+
+    def __post_init__(self):
+        # log_level needs coercion
+        if not isinstance(self.log_level, LogLevel):
+            self.log_level = LogLevel(self.log_level)
 
 
 @dataclass
@@ -114,6 +135,7 @@ class ReportingConfig:
 class AppConfig:
     pipeline: PipelineConfig
     paths: PathsConfig
+    logging: LoggingConfig
     generation: GenerationConfig
     quality: QualityConfig
     reporting: ReportingConfig
