@@ -70,7 +70,10 @@ class RunManifest:
     quality_checks: QualityChecks
 
     def __post_init__(self):
-        # stats, checks and dates need coercion
+        # status, stats, checks and dates need coercion
+        if not isinstance(self.status, Status):
+            self.status = Status(self.status)
+
         if not isinstance(self.stats, RunStats):
             self.stats = RunStats(**self.stats)
 
