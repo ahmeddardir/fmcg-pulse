@@ -5,6 +5,13 @@ from datetime import date
 from pathlib import Path
 
 
+def _coerce_attr_dict(cls, instance):
+    for field_name, constructor in cls.__annotations__.items():
+        value = getattr(instance, field_name)
+        if isinstance(value, dict):
+            setattr(instance, field_name, constructor(**value))
+
+
 @dataclass
 class PipelineConfig:
     market: str
@@ -14,10 +21,12 @@ class PipelineConfig:
 class PathsConfig:
     raw_dir: Path
     output_dir: Path
+    logs_dir: Path
 
     def __post_init__(self):
         self.raw_dir = Path(self.raw_dir)
         self.output_dir = Path(self.output_dir)
+        self.logs_dir = Path(self.logs_dir)
 
 
 @dataclass
@@ -28,9 +37,9 @@ class GenerationConfig:
     end_date: date
 
     def __post_init__(self):
-        if isinstance(self.start_date, str):
+        if not isinstance(self.start_date, date):
             self.start_date = date.fromisoformat(self.start_date)
-        if isinstance(self.end_date, str):
+        if not isinstance(self.end_date, date):
             self.end_date = date.fromisoformat(self.end_date)
 
         # Validate date order
@@ -110,8 +119,4 @@ class AppConfig:
     reporting: ReportingConfig
 
     def __post_init__(self):
-
-        for field_name, constructor in AppConfig.__annotations__.items():
-            value = getattr(self, field_name)
-            if isinstance(value, dict):
-                setattr(self, field_name, constructor(**value))
+        _coerce_attr_dict(AppConfig, self)
