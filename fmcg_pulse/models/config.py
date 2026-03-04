@@ -1,3 +1,5 @@
+"""Configuration dataclasses."""
+
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
