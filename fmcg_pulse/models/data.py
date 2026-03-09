@@ -15,10 +15,12 @@ type Period = str
 class Product:
     barcode: Barcode
     name: str
-    brand: str
-    manufacturer: str
-    sub_category: str
     category: str
+    sub_category: str
+    manufacturer: str
+    brand: str
+    is_private_label: bool
+    ref_price: float
 
 
 @dataclass
