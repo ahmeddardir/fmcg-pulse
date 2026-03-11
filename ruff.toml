@@ -11,6 +11,7 @@ select = [
     "SIM",  # flake8-simplify (simplifiable code)
     "TCH",  # type-checking imports
     "RET",  # return statement patterns
+    "G",    # flake8-logging-format (lazy % formatting in logging)
 ]
 
 ignore = [
