@@ -1,5 +1,4 @@
-"""
-Synthetic data generation.
+"""Synthetic data generation.
 
 Builds a list of unique Product instances sampled from the static
 archetypes in catalog.py, then generates a stream of Transaction records
@@ -126,8 +125,7 @@ fake = Faker()
 
 
 def _infer_unit_type(descriptor: str, sub_category: str) -> str:
-    """
-    Infer the unit type for a product based on its descriptor and sub-category.
+    """Infer the unit type for a product based on its descriptor and sub-category.
 
     Keyword matches in the descriptor are checked first; if none apply,
     the sub-category is used as a fallback.
@@ -138,6 +136,7 @@ def _infer_unit_type(descriptor: str, sub_category: str) -> str:
 
     Returns:
         str: One of {"liquid", "solid", "count"} if inferred, otherwise "unknown".
+
     """
     tokens = descriptor.lower().split()
 
@@ -163,8 +162,7 @@ def _infer_unit_type(descriptor: str, sub_category: str) -> str:
 
 
 def _format_size(size: float, unit_type: str) -> str:
-    """
-    Format a product size into a human-readable string.
+    """Format a product size into a human-readable string.
 
     Args:
         size (float): Numeric size greater than zero.
@@ -175,6 +173,7 @@ def _format_size(size: float, unit_type: str) -> str:
 
     Returns:
         str: Formatted size (e.g., "500ml", "1L", "2.25kg", "5 Tabs").
+
     """
     u_type = unit_type.lower()
 
@@ -204,8 +203,7 @@ def _format_size(size: float, unit_type: str) -> str:
 
 
 def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
-    """
-    Build a list of unique synthetic products sampled from a catalog.
+    """Build a list of unique synthetic products sampled from a catalog.
 
     Samples catalog entries at random, inferring unit type and formatting
     size strings for each product. Skips entries where unit type cannot be
@@ -222,6 +220,7 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
     Returns:
         list[Product]: Built products. May be shorter than n_products if
             the attempt cap is reached.
+
     """
     max_unique = sum(
         len(entry["descriptors"]) * len(entry["sizes"]) for entry in catalog
@@ -298,8 +297,7 @@ def generate_transactions(
     start_date: date,
     end_date: date,
 ) -> Generator[Transaction]:
-    """
-    Yield synthetic transactions sampled from a list of products.
+    """Yield synthetic transactions sampled from a list of products.
 
     Each transaction applies +/-15% price jitter around the product's
     ref_price and samples quantity with weights favouring lower values.
@@ -312,6 +310,7 @@ def generate_transactions(
 
     Yields:
         Transaction: One transaction per iteration.
+
     """
     diff_days = (end_date - start_date).days
 
@@ -332,8 +331,7 @@ def generate_transactions(
 
 
 def generate_all(config: AppConfig) -> None:
-    """
-    Coordinate product building and transaction generation.
+    """Coordinate product building and transaction generation.
 
     Builds products via build_products, serializes them to JSON, then
     consumes the generate_transactions generator and writes each row
@@ -343,6 +341,7 @@ def generate_all(config: AppConfig) -> None:
     Args:
         config (AppConfig): Pipeline configuration holding generation
             settings and output paths.
+
     """
     file_path_json = config.paths.raw_dir / "products.json"
     file_path_csv = config.paths.raw_dir / "transactions.csv"

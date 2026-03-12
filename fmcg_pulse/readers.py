@@ -1,5 +1,4 @@
-"""
-Ingestion layer file readers.
+"""Ingestion layer file readers.
 
 Deserializes pipeline inputs from disk: read_products() loads the product
 list from JSON into a list of Product instances; read_transactions()
@@ -15,28 +14,28 @@ from fmcg_pulse.models.data import Product, Transaction
 
 
 def read_products(file_path: Path) -> list[Product]:
-    """
-    Deserialize a JSON file into a list of Product dataclasses.
+    """Deserialize a JSON file into a list of Product dataclasses.
 
     Args:
         file_path (Path): Path to the products JSON file.
 
     Returns:
         list[Product]: Deserialized list of Product instances.
+
     """
     with file_path.open() as json_file:
         return [Product(**entry) for entry in json.load(json_file)]
 
 
 def read_transactions(file_path: Path) -> Generator[Transaction]:
-    """
-    Yield Transaction instances from a CSV file one row at a time.
+    """Yield Transaction instances from a CSV file one row at a time.
 
     Args:
         file_path (Path): Path to the transactions CSV file.
 
     Yields:
         Transaction: One Transaction per row.
+
     """
     with file_path.open() as csv_file:
         reader = csv.DictReader(csv_file)
