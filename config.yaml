@@ -27,5 +27,7 @@ reporting:
   reports:
     - name: "category_performance"
       dimensions: ["category", "sub_category"]
+      partition_by: "category"
     - name: "brand_performance"
-      dimensions: ["category", "brand", "manufacturer"]
+      dimensions: ["category", "manufacturer", "brand"]
+      partition_by: ["category", "manufacturer"]
