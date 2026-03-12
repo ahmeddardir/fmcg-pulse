@@ -87,11 +87,13 @@ reporting:
   reports:
     - name: "category_performance"
       dimensions: ["category", "sub_category"]
+      partition_by: "category"                      # Share computed within category
     - name: "brand_performance"
-      dimensions: ["category", "brand", "manufacturer"]
+      dimensions: ["category", "manufacturer", "brand"]
+      partition_by: ["category", "manufacturer"]    # Share within manufacturer per category
 ```
 
-Reports are dimension-agnostic. Add a new entry under `reporting.reports` with any combination of product dimensions and the pipeline produces it without code changes.
+Reports are dimension-agnostic. Add a new entry under `reporting.reports` with any combination of product dimensions and an optional `partition_by` to control how market share is partitioned.
 
 ---
 
@@ -99,7 +101,7 @@ Reports are dimension-agnostic. Add a new entry under `reporting.reports` with a
 
 **`category_performance.csv`** - revenue, volume, and market share grouped by category and sub-category.
 
-**`brand_performance.csv`** - revenue, volume, and market share grouped by category, brand, and manufacturer.
+**`brand_performance.csv`** - revenue, volume, and market share grouped by category, manufacturer, and brand.
 
 **`run_manifest.json`** - audit log for each pipeline run: timestamps, transaction counts, rejection rate, and quality check results.
 
