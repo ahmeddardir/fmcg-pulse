@@ -12,6 +12,7 @@ select = [
     "TCH",  # type-checking imports
     "RET",  # return statement patterns
     "G",    # flake8-logging-format (lazy % formatting in logging)
+    "D",    # pydocstyle (docstring conventions)
 ]
 
 ignore = [
