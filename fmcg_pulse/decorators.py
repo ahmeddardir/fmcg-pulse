@@ -12,6 +12,7 @@ class RetriesExhaustedError(Exception):
     """Raised when a retried function exhausts all allowed attempts."""
 
     def __init__(self, attempts, last_exc) -> None:
+        """Initialize the error with attempt count and last raised exception."""
         self.attempts = attempts
         self.last_exc = last_exc
         super().__init__(
@@ -21,7 +22,7 @@ class RetriesExhaustedError(Exception):
 
 
 def log_execution_time(func):
-    """Decorator that logs the execution time of the wrapped function in ms."""
+    """Log the execution time of the wrapped function in milliseconds."""
 
     @wraps(func)
     def wrapper(*args, **kwargs):
@@ -41,8 +42,7 @@ def retry_on_failure(
     max_delay: float = 30.0,
     jitter: float = 0.1,
 ):
-    """
-    Decorator factory that retries the wrapped function on failure.
+    """Create a decorator that retries the wrapped function on failure.
 
     Uses exponential backoff with jitter between attempts.
     Raises RetriesExhaustedError if all attempts fail.
@@ -52,6 +52,7 @@ def retry_on_failure(
         base_delay: Base delay in seconds for exponential backoff.
         max_delay: Maximum delay in seconds between attempts.
         jitter: Upper bound for random jitter added to each delay.
+
     """
 
     def decorator(func):

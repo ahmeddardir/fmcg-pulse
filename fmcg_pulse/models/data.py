@@ -13,6 +13,8 @@ type Period = str
 
 @dataclass
 class Product:
+    """Represent a single product."""
+
     barcode: Barcode
     name: str
     category: str
@@ -25,6 +27,8 @@ class Product:
 
 @dataclass
 class Transaction:
+    """Represent a single transaction."""
+
     trn_id: TrnId
     trn_date: date
     store_id: StoreId
@@ -33,18 +37,22 @@ class Transaction:
     unit_price: float
 
     def __post_init__(self):
-        # Transaction date needs coercion
+        """Coerce transaction date into a date object."""
         if not isinstance(self.trn_date, date):
             self.trn_date = date.fromisoformat(self.trn_date)
 
 
 class Status(StrEnum):
+    """Enumeration of run execution statuses."""
+
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
 
 
 @dataclass
 class RunStats:
+    """Store aggregated statistics for a pipeline run."""
+
     raw_transactions: int
     valid_transactions: int
     rejected_transactions: int
@@ -55,6 +63,8 @@ class RunStats:
 
 @dataclass
 class QualityChecks:
+    """Store results of data quality checks."""
+
     null_rate_passed: bool
     min_transactions_passed: bool
     price_range_passed: bool
@@ -62,6 +72,8 @@ class QualityChecks:
 
 @dataclass
 class RunManifest:
+    """Represent metadata and results for a pipeline run."""
+
     run_id: RunId
     market: str
     period: Period
@@ -72,7 +84,7 @@ class RunManifest:
     quality_checks: QualityChecks
 
     def __post_init__(self):
-        # status, stats, checks and dates need coercion
+        """Coerce nested fields and timestamps into their proper types."""
         if not isinstance(self.status, Status):
             self.status = Status(self.status)
 

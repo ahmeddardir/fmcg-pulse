@@ -1,5 +1,4 @@
-"""
-Static product catalog for synthetic data generation.
+"""Static product catalog for synthetic data generation.
 
 Contains FMCG brand/manufacturer/category pairings representative of the
 German supermarket (Rewe, Edeka, Lidl, Aldi).

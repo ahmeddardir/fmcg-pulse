@@ -1,5 +1,4 @@
-"""
-Logging configuration.
+"""Logging configuration.
 
 Configures three handlers on the root logger:
   - Console: human-readable output to stdout
@@ -27,8 +26,7 @@ def setup_logging(
     log_format_std: str = LOG_FMT_STD,
     log_format_json: str = LOG_FMT_JSON,
 ) -> None:
-    """
-    Configure the root logger.
+    """Configure the root logger.
 
     Sets up console, rotating text file, and rotating JSON file handlers.
     """
