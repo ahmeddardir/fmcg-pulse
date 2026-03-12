@@ -75,10 +75,9 @@ class GenerationConfig:
             self.start_date = date.fromisoformat(self.start_date)
         if not isinstance(self.end_date, date):
             self.end_date = date.fromisoformat(self.end_date)
-
         if self.start_date > self.end_date:
             raise ValueError(
-                f"start_date {self.start_date} must be <= end_date {self.end_date}"
+                f"start_date {self.start_date} must be <= end_date {self.end_date}."
             )
 
 
@@ -93,41 +92,58 @@ class QualityConfig:
 
     def __post_init__(self):
         """Validate numeric ranges and semantic constraints."""
+        if not (0 < self.max_null_pct <= 1):
+            raise ValueError("max_null_pct must be between 0 and 1.")
+
         if self.min_transactions <= 0:
-            raise ValueError("min_transactions must be > 0")
+            raise ValueError("min_transactions must be > 0.")
 
         if self.min_price <= 0:
-            raise ValueError("min_price must be > 0")
-
+            raise ValueError("min_price must be > 0.")
         if self.max_price <= 0:
-            raise ValueError("max_price must be > 0")
-
-        if not (0 < self.max_null_pct <= 1):
-            raise ValueError("max_null_pct must be between 0 and 1")
-
+            raise ValueError("max_price must be > 0.")
         if self.min_price >= self.max_price:
             raise ValueError(
-                f"min_price ({self.min_price}) must be < max_price ({self.max_price})"
+                f"min_price ({self.min_price}) must be < max_price ({self.max_price})."
             )
 
 
 @dataclass
 class Report:
-    """Define a reporting view and its dimensions."""
+    """Define a report's dimensions and partition columns for window-based metrics."""
 
     name: str
     dimensions: list[str]
+    partition_by: str | list[str] | None = None
 
     def __post_init__(self):
-        """Validate report name and enforce unique dimensions."""
+        """Validate name and dimensions, and normalize and validate partition_by."""
         if not self.name:
-            raise ValueError("Report name cannot be empty")
+            raise ValueError("Report name cannot be empty.")
 
         if not self.dimensions:
-            raise ValueError(f"Report '{self.name}' must have at least one dimension")
-
+            raise ValueError(f"Report '{self.name}' must have at least one dimension.")
         if len(self.dimensions) != len(set(self.dimensions)):
-            raise ValueError(f"Report '{self.name}' has duplicate dimensions")
+            raise ValueError(f"Report '{self.name}' has duplicate dimensions.")
+
+        if self.partition_by is not None:
+            if not isinstance(self.partition_by, list):
+                self.partition_by = [self.partition_by]
+            if not self.partition_by:  # empty list after normalization
+                self.partition_by = None
+            else:
+                if len(self.partition_by) != len(set(self.partition_by)):
+                    raise ValueError(
+                        f"Report '{self.name}' has duplicate partition_by values."
+                    )
+                invalid = [
+                    col for col in self.partition_by if col not in self.dimensions
+                ]
+                if invalid:
+                    raise ValueError(
+                        f"Report '{self.name}' has partition_by values "
+                        f"not in dimensions: {invalid}."
+                    )
 
 
 @dataclass
@@ -145,7 +161,7 @@ class ReportingConfig:
 
         names = [report.name for report in self.reports]
         if len(names) != len(set(names)):
-            raise ValueError("Duplicate report names found in reporting config")
+            raise ValueError("Duplicate report names found in reporting config.")
 
 
 @dataclass
