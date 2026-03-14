@@ -1,14 +1,42 @@
 """Data model dataclasses."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, fields
 from datetime import date, datetime
 from enum import StrEnum
+from typing import get_type_hints
+
+import polars as pl
 
 type Barcode = str
 type TrnId = str
 type StoreId = str
 type RunId = str
 type Period = str
+
+PY_TO_PL = {
+    str: pl.String,
+    int: pl.Int64,
+    float: pl.Float64,
+    bool: pl.Boolean,
+    date: pl.Date,
+}
+
+
+def _schema_from_dataclass(cls) -> dict[str, pl.DataType]:
+    """Generate a Polars schema dictionary from a dataclass definition.
+
+    Inspects the dataclass fields and maps their annotated Python types to Polars dtypes
+    using the PY_TO_PL mapping. Provides a single source of truth for schema generation.
+
+    Args:
+        cls: The dataclass type to derive a schema from.
+
+    Returns:
+        dict[str, pl.DataType]: A mapping of field names to Polars dtypes.
+
+    """
+    hints = get_type_hints(cls)
+    return {field.name: PY_TO_PL[hints[field.name]] for field in fields(cls)}
 
 
 @dataclass
@@ -23,6 +51,16 @@ class Product:
     brand: str
     is_private_label: bool
     ref_price: float
+
+    @classmethod
+    def get_schema(cls) -> dict[str, pl.DataType]:
+        """Return the Polars schema for the Product model.
+
+        Returns:
+            dict[str, pl.DataType]: Polars dtypes for each Product field.
+
+        """
+        return _schema_from_dataclass(cls)
 
 
 @dataclass
@@ -40,6 +78,16 @@ class Transaction:
         """Coerce transaction date into a date object."""
         if not isinstance(self.trn_date, date):
             self.trn_date = date.fromisoformat(self.trn_date)
+
+    @classmethod
+    def get_schema(cls) -> dict[str, pl.DataType]:
+        """Return the Polars schema for the Transaction model.
+
+        Returns:
+            dict[str, pl.DataType]: Polars dtypes for each Transaction field.
+
+        """
+        return _schema_from_dataclass(cls)
 
 
 class Status(StrEnum):

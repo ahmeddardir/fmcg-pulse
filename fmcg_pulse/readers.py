@@ -1,51 +1,43 @@
-"""Ingestion layer file readers.
+"""Ingestion layer file scanners.
 
-Deserializes pipeline inputs from disk: read_products() loads the product
-list from JSON into a list of Product instances; read_transactions()
-streams transactions from CSV one row at a time as a generator.
+Product data is ingested from NDJSON using scan_products(),
+and transaction data is ingested from CSV using scan_transactions().
+Both functions return Polars LazyFrames.
 """
 
-import csv
-import json
-from collections.abc import Generator
 from pathlib import Path
+
+import polars as pl
 
 from fmcg_pulse.models.data import Product, Transaction
 
 
-def read_products(file_path: Path) -> list[Product]:
-    """Deserialize a JSON file into a list of Product dataclasses.
+def scan_products(file_path: Path) -> pl.LazyFrame:
+    """Return a lazy scanner over an NDJSON products file.
+
+    The file must be in newline-delimited JSON (NDJSON) format, where each
+    line contains a single product record.
 
     Args:
-        file_path (Path): Path to the products JSON file.
+        file_path (Path): Path to the NDJSON products file.
 
     Returns:
-        list[Product]: Deserialized list of Product instances.
+        pl.LazyFrame: Lazily scanned product data with the enforced schema.
 
     """
-    with file_path.open() as json_file:
-        return [Product(**entry) for entry in json.load(json_file)]
+    return pl.scan_ndjson(source=file_path, schema=Product.get_schema())
 
 
-def read_transactions(file_path: Path) -> Generator[Transaction]:
-    """Yield Transaction instances from a CSV file one row at a time.
+def scan_transactions(file_path: Path) -> pl.LazyFrame:
+    """Return a lazy scanner over a CSV transactions file.
 
     Args:
         file_path (Path): Path to the transactions CSV file.
 
-    Yields:
-        Transaction: One Transaction per row.
+    Returns:
+        pl.LazyFrame: Lazily scanned transaction data with the enforced schema.
 
     """
-    with file_path.open() as csv_file:
-        reader = csv.DictReader(csv_file)
-        for row in reader:
-            transaction = Transaction(
-                trn_id=row["transaction_id"],
-                trn_date=row["date"],  # type: ignore[arg-type]
-                store_id=row["store_id"],
-                barcode=row["barcode"],
-                quantity=int(row["quantity"]),
-                unit_price=float(row["unit_price"]),
-            )
-            yield transaction
+    return pl.scan_csv(
+        source=file_path, schema=Transaction.get_schema(), try_parse_dates=True
+    )

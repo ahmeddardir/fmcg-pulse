@@ -11,7 +11,7 @@ import json
 import logging
 import random
 from collections.abc import Generator
-from dataclasses import asdict
+from dataclasses import asdict, fields
 from datetime import date, timedelta
 
 from faker import Faker
@@ -333,8 +333,8 @@ def generate_transactions(
 def generate_all(config: AppConfig) -> None:
     """Coordinate product building and transaction generation.
 
-    Builds products via build_products, serializes them to JSON, then
-    consumes the generate_transactions generator and writes each row
+    Builds products via build_products, serializes them to JSON (NDJSON),
+    then consumes the generate_transactions generator and writes each row
     to CSV. All file I/O is handled here; neither build_products nor
     generate_transactions touches the filesystem.
 
@@ -351,8 +351,8 @@ def generate_all(config: AppConfig) -> None:
 
     # Serialize and dump products into JSON file
     with file_path_json.open("w") as json_file:
-        products_serialized = [asdict(product) for product in products]
-        json.dump(products_serialized, json_file, indent=4)
+        for product in products:
+            json_file.write(json.dumps(asdict(product)) + "\n")
     logger.info("Wrote %d products to '%s'.", len(products), file_path_json)
 
     logger.info("Generating %d transactions.", config.generation.n_transactions)
@@ -367,19 +367,10 @@ def generate_all(config: AppConfig) -> None:
     # Iterate over transactions and write them to CSV file
     with file_path_csv.open("w") as csv_file:
         writer = csv.writer(csv_file)
-        writer.writerow(
-            ["transaction_id", "date", "store_id", "barcode", "quantity", "unit_price"]
-        )
+        writer.writerow([field.name for field in fields(Transaction)])
         for transaction in transactions:
             writer.writerow(
-                [
-                    transaction.trn_id,
-                    transaction.trn_date,
-                    transaction.store_id,
-                    transaction.barcode,
-                    transaction.quantity,
-                    transaction.unit_price,
-                ]
+                [getattr(transaction, field.name) for field in fields(Transaction)]
             )
             n_transactions += 1
     logger.info(
