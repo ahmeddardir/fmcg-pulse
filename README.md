@@ -75,7 +75,7 @@ generation:
   n_transactions: 50000         # Number of synthetic transactions to generate
   n_products: 300               # Number of synthetic products in the catalog
   start_date: "2025-01-01"      # Transaction date range start
-  end_date: "2025-03-31"        # Transaction date range end
+  end_date: "2025-12-31"        # Transaction date range end
 
 quality:
   max_null_pct: 0.05            # Maximum acceptable null rate (5%)
@@ -85,12 +85,20 @@ quality:
 
 reporting:
   reports:
-    - name: "category_performance"
+    - name: "q1_monthly_category_performance"
+      dimensions: ["category", "sub_category"]
+      partition_by: "category"                      # Share computed within category
+      time_grain: "month"                           # Group by month
+      filters:
+        date_from: "2025-01-01"                     # Inclusive start date
+        date_to: "2025-03-31"                       # Inclusive end date
+    - name: "overall_category_performance"
       dimensions: ["category", "sub_category"]
       partition_by: "category"                      # Share computed within category
     - name: "brand_performance"
       dimensions: ["category", "manufacturer", "brand"]
       partition_by: ["category", "manufacturer"]    # Share within manufacturer per category
+      time_grain: "month"                           # Group by month
 ```
 
 Reports are dimension-agnostic. Add a new entry under `reporting.reports` with any combination of product dimensions and an optional `partition_by` to control how market share is partitioned.
@@ -99,9 +107,11 @@ Reports are dimension-agnostic. Add a new entry under `reporting.reports` with a
 
 ## Outputs
 
-**`category_performance.csv`** - revenue, volume, and market share grouped by category and sub-category.
+**`q1_monthly_category_performance.csv`** - revenue, volume, weighted average selling price, and within-category market share grouped by category and sub-category, broken down by month for Q1 2025.
 
-**`brand_performance.csv`** - revenue, volume, and market share grouped by category, manufacturer, and brand.
+**`overall_category_performance.csv`** - revenue, volume, weighted average selling price, and within-category market share grouped by category and sub-category across the full dataset.
+
+**`brand_performance.csv`** - revenue, volume, weighted average selling price, and within-manufacturer market share grouped by category, manufacturer, and brand, broken down by month.
 
 **`run_manifest.json`** - audit log for each pipeline run: timestamps, transaction counts, rejection rate, and quality check results.
 
@@ -110,6 +120,12 @@ Reports are dimension-agnostic. Add a new entry under `reporting.reports` with a
 ## Design notes
 
 **Config validation at startup.** Bad configuration (e.g. `min_price >= max_price`, invalid date range) raises immediately before the pipeline runs.
+
+**Reports are fully defined by config.** Each report defines its own `dimensions`, `partition_by`, `time_grain`, and `filters`. The transformation layer reads these and builds Polars aggregations dynamically. Adding a new report requires only a new entry in `config.yaml`.
+
+**`partition_by` controls market share partitioning.** `market_share_pct` is computed as a window function partitioned by `partition_by`. If omitted, share is computed globally. `time_grain` is automatically prepended to `partition_by` at transform time so share is always computed within the correct period.
+
+**`avg_selling_price` uses weighted mean.** Computed as `sum(unit_price * quantity) / sum(quantity)` within each group, reflecting what consumers actually paid on average across all units.
 
 **Row-level validation in bulk.** Data quality checks run in `validators.py` using Polars across the full dataset, not per-row in `__post_init__`. High-volume data requires bulk processing.
 
