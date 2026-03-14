@@ -15,7 +15,7 @@ generation:
   n_transactions: 50000
   n_products: 300
   start_date: "2025-01-01"
-  end_date: "2025-03-31"
+  end_date: "2025-12-31"
 
 quality:
   max_null_pct: 0.05
@@ -25,9 +25,17 @@ quality:
 
 reporting:
   reports:
-    - name: "category_performance"
+    - name: "q1_monthly_category_performance"
+      dimensions: ["category", "sub_category"]
+      partition_by: "category"
+      time_grain: "month"
+      filters:
+        date_from: "2025-01-01"
+        date_to: "2025-03-31"
+    - name: "overall_category_performance"
       dimensions: ["category", "sub_category"]
       partition_by: "category"
     - name: "brand_performance"
       dimensions: ["category", "manufacturer", "brand"]
       partition_by: ["category", "manufacturer"]
+      time_grain: "month"
