@@ -14,6 +14,36 @@ def _coerce_attr_dict(cls, instance):
             setattr(instance, field_name, constructor(**value))
 
 
+def _coerce_date_range(
+    start_date: str | date | None,
+    end_date: str | date | None,
+) -> tuple[date | None, date | None]:
+    """Coerce inputs to date objects and ensure start <= end when both exist.
+
+    Accepts ISO-formatted strings (YYYY-MM-DD), date objects, or None.
+    Converts non-None values to date instances and validates that the start
+    date does not occur after the end date when both are provided.
+
+    Args:
+        start_date (str | date | None): Start of the date range.
+        end_date (str | date | None): End of the date range.
+
+    Raises:
+        ValueError: If both dates are provided and start_date > end_date.
+
+    Returns:
+        tuple[date | None, date | None]: The coerced (start_date, end_date).
+
+    """
+    if start_date is not None and not isinstance(start_date, date):
+        start_date = date.fromisoformat(start_date)
+    if end_date is not None and not isinstance(end_date, date):
+        end_date = date.fromisoformat(end_date)
+    if start_date is not None and end_date is not None and start_date > end_date:
+        raise ValueError(f"start date {start_date} must be <= end date {end_date}.")
+    return start_date, end_date
+
+
 @dataclass
 class PipelineConfig:
     """Store pipeline-level configuration."""
@@ -71,14 +101,10 @@ class GenerationConfig:
 
     def __post_init__(self):
         """Coerce dates and validate chronological order."""
-        if not isinstance(self.start_date, date):
-            self.start_date = date.fromisoformat(self.start_date)
-        if not isinstance(self.end_date, date):
-            self.end_date = date.fromisoformat(self.end_date)
-        if self.start_date > self.end_date:
-            raise ValueError(
-                f"start_date {self.start_date} must be <= end_date {self.end_date}."
-            )
+        start, end = _coerce_date_range(self.start_date, self.end_date)
+        if start is None or end is None:
+            raise ValueError("start_date and end_date are required.")
+        self.start_date, self.end_date = start, end
 
 
 @dataclass
@@ -108,16 +134,43 @@ class QualityConfig:
             )
 
 
+class TimeGrain(StrEnum):
+    """Enumeration of supported time grains."""
+
+    day = "day"
+    week = "week"
+    month = "month"
+    quarter = "quarter"
+
+
+@dataclass
+class ReportFilters:
+    """Define an optional date range filter for a report."""
+
+    date_from: date | None = None
+    date_to: date | None = None
+
+    def __post_init__(self):
+        """Coerce dates and validate chronological order."""
+        self.date_from, self.date_to = _coerce_date_range(self.date_from, self.date_to)
+
+
 @dataclass
 class Report:
-    """Define a report's dimensions and partition columns for window-based metrics."""
+    """Define a report's dimensions, partition columns, time grain, and date filters."""
 
     name: str
     dimensions: list[str]
     partition_by: str | list[str] | None = None
+    time_grain: TimeGrain | None = None
+    filters: ReportFilters | None = None
 
     def __post_init__(self):
-        """Validate name and dimensions, and normalize and validate partition_by."""
+        """Validate and normalize all Report fields.
+
+        Checks name and dimensions, normalizes and validates partition_by,
+        and coerces time_grain and filters to their correct types.
+        """
         if not self.name:
             raise ValueError("Report name cannot be empty.")
 
@@ -144,6 +197,18 @@ class Report:
                         f"Report '{self.name}' has partition_by values "
                         f"not in dimensions: {invalid}."
                     )
+
+        if self.time_grain is not None and not isinstance(self.time_grain, TimeGrain):
+            self.time_grain = TimeGrain(self.time_grain)
+
+        if self.filters is not None and not isinstance(self.filters, ReportFilters):
+            self.filters = ReportFilters(**self.filters)
+        if (
+            isinstance(self.filters, ReportFilters)
+            and self.filters.date_from is None
+            and self.filters.date_to is None
+        ):  # empty filters after normalization
+            self.filters = None
 
 
 @dataclass
