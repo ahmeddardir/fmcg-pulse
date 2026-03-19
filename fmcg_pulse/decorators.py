@@ -45,13 +45,19 @@ def retry_on_failure(
     """Create a decorator that retries the wrapped function on failure.
 
     Uses exponential backoff with jitter between attempts.
-    Raises RetriesExhaustedError if all attempts fail.
 
     Args:
-        max_attempts: Maximum number of attempts before giving up.
-        base_delay: Base delay in seconds for exponential backoff.
-        max_delay: Maximum delay in seconds between attempts.
-        jitter: Upper bound for random jitter added to each delay.
+        max_attempts (int, optional):
+            Maximum number of attempts before giving up. Defaults to 3.
+        base_delay (float, optional):
+            Base delay in seconds for exponential backoff. Defaults to 1.0.
+        max_delay (float, optional):
+            Maximum delay in seconds between attempts. Defaults to 30.0.
+        jitter (float, optional):
+            Upper bound for random jitter added to each delay. Defaults to 0.1.
+
+    Raises:
+        RetriesExhaustedError: If all attempts fail.
 
     """
 

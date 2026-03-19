@@ -214,12 +214,14 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
         catalog (list[dict]): Product archetypes to sample from.
 
     Raises:
-        ValueError: If n_products exceeds the number of unique products
-            possible from the catalog.
+        ValueError:
+            If n_products exceeds the number of unique products possible
+            from the catalog.
 
     Returns:
-        list[Product]: Built products. May be shorter than n_products if
-            the attempt cap is reached.
+        list[Product]:
+            Built products. May be shorter than n_products if the attempt
+            cap is reached.
 
     """
     max_unique = sum(
@@ -339,8 +341,8 @@ def generate_all(config: AppConfig) -> None:
     generate_transactions touches the filesystem.
 
     Args:
-        config (AppConfig): Pipeline configuration holding generation
-            settings and output paths.
+        config (AppConfig):
+            Pipeline configuration holding generation settings and output paths.
 
     """
     file_path_json = config.paths.raw_dir / "products.json"
