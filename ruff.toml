@@ -13,6 +13,10 @@ select = [
     "RET",  # return statement patterns
     "G",    # flake8-logging-format (lazy % formatting in logging)
     "D",    # pydocstyle (docstring conventions)
+    "ANN",  # flake8-annotations (enforce type annotations)
+    "PTH",  # flake8-use-pathlib (prefer pathlib over os.path)
+    "ERA",  # eradicate (flag commented-out code)
+    "RUF",  # Ruff-specific rules (dataclass issues, invalid noqa)
 ]
 
 ignore = [
