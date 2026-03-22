@@ -16,7 +16,7 @@ from datetime import date, timedelta
 
 from faker import Faker
 
-from fmcg_pulse.catalog import CATALOG
+from fmcg_pulse.catalog import CATALOG, CatalogEntry
 from fmcg_pulse.models.config import AppConfig
 from fmcg_pulse.models.data import Product, Transaction
 
@@ -202,7 +202,7 @@ def _format_size(size: float, unit_type: str) -> str:
     raise ValueError(f"Unhandled unit type: '{unit_type}'.")
 
 
-def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
+def build_products(n_products: int, catalog: list[CatalogEntry]) -> list[Product]:
     """Build a list of unique synthetic products sampled from a catalog.
 
     Samples catalog entries at random, inferring unit type and formatting
@@ -211,7 +211,7 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
 
     Args:
         n_products (int): Number of unique products to build.
-        catalog (list[dict]): Product archetypes to sample from.
+        catalog (list[CatalogEntry]): Product archetypes to sample from.
 
     Raises:
         ValueError:
@@ -224,9 +224,7 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
             cap is reached.
 
     """
-    max_unique = sum(
-        len(entry["descriptors"]) * len(entry["sizes"]) for entry in catalog
-    )
+    max_unique = sum(len(entry.descriptors) * len(entry.sizes) for entry in catalog)
     if n_products > max_unique:
         raise ValueError(
             f"n_products ({n_products}) exceeds maximum unique products "
@@ -248,12 +246,12 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
             break
 
         entry = random.choice(catalog)
-        category = entry["category"]
-        sub_category = entry["sub_category"]
-        manufacturer = entry["manufacturer"]
-        brand = entry["brand"]
-        is_private_label = entry["is_private_label"]
-        descriptor = random.choice(entry["descriptors"])
+        category = entry.category
+        sub_category = entry.sub_category
+        manufacturer = entry.manufacturer
+        brand = entry.brand
+        is_private_label = entry.is_private_label
+        descriptor = random.choice(entry.descriptors)
 
         # Infer unit type and skip entries where it cannot be inferred
         unit_type = _infer_unit_type(descriptor, sub_category)
@@ -262,9 +260,9 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
             continue
 
         # Format size and build product name
-        size = random.choice(entry["sizes"])
+        size = random.choice(entry.sizes)
         formatted_size = _format_size(size, unit_type)
-        name = f"{entry['brand']} {descriptor} {formatted_size}"
+        name = f"{entry.brand} {descriptor} {formatted_size}"
 
         # Skip duplicate names
         if name in seen_names:
@@ -273,7 +271,7 @@ def build_products(n_products: int, catalog: list[dict]) -> list[Product]:
 
         # Compute price and generate barcode
         ref_price = round(
-            random.uniform(*entry["price_range"]) * (size / entry["sizes"][0]) ** 0.85,
+            random.uniform(*entry.price_range) * (size / entry.sizes[0]) ** 0.85,
             2,
         )
         barcode = fake.ean(length=13)

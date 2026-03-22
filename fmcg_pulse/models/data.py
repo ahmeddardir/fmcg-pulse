@@ -13,7 +13,7 @@ type StoreId = str
 type RunId = str
 type Period = str
 
-PY_TO_PL = {
+PY_TO_PL: dict[type, type[pl.DataType]] = {
     str: pl.String,
     int: pl.Int64,
     float: pl.Float64,
@@ -22,7 +22,7 @@ PY_TO_PL = {
 }
 
 
-def _schema_from_dataclass(cls) -> dict[str, pl.DataType]:
+def _schema_from_dataclass(cls: type) -> dict[str, type[pl.DataType]]:
     """Generate a Polars schema dictionary from a dataclass definition.
 
     Inspects the dataclass fields and maps their annotated Python types to Polars dtypes
@@ -32,7 +32,7 @@ def _schema_from_dataclass(cls) -> dict[str, pl.DataType]:
         cls: The dataclass type to derive a schema from.
 
     Returns:
-        dict[str, pl.DataType]: A mapping of field names to Polars dtypes.
+        dict[str, type[pl.DataType]]: A mapping of field names to Polars dtype classes.
 
     """
     hints = get_type_hints(cls)
@@ -53,11 +53,12 @@ class Product:
     ref_price: float
 
     @classmethod
-    def get_schema(cls) -> dict[str, pl.DataType]:
+    def get_schema(cls) -> dict[str, type[pl.DataType]]:
         """Return the Polars schema for the Product model.
 
         Returns:
-            dict[str, pl.DataType]: Polars dtypes for each Product field.
+            dict[str, type[pl.DataType]]:
+                Polars dtype classes for each Product field.
 
         """
         return _schema_from_dataclass(cls)
@@ -74,17 +75,13 @@ class Transaction:
     quantity: int
     unit_price: float
 
-    def __post_init__(self):
-        """Coerce transaction date into a date object."""
-        if not isinstance(self.trn_date, date):
-            self.trn_date = date.fromisoformat(self.trn_date)
-
     @classmethod
-    def get_schema(cls) -> dict[str, pl.DataType]:
+    def get_schema(cls) -> dict[str, type[pl.DataType]]:
         """Return the Polars schema for the Transaction model.
 
         Returns:
-            dict[str, pl.DataType]: Polars dtypes for each Transaction field.
+            dict[str, type[pl.DataType]]:
+                Polars dtype classes for each Transaction field.
 
         """
         return _schema_from_dataclass(cls)
@@ -130,20 +127,3 @@ class RunManifest:
     completed_at: datetime
     stats: RunStats
     quality_checks: QualityChecks
-
-    def __post_init__(self):
-        """Coerce nested fields and timestamps into their proper types."""
-        if not isinstance(self.status, Status):
-            self.status = Status(self.status)
-
-        if not isinstance(self.stats, RunStats):
-            self.stats = RunStats(**self.stats)
-
-        if not isinstance(self.quality_checks, QualityChecks):
-            self.quality_checks = QualityChecks(**self.quality_checks)
-
-        if not isinstance(self.started_at, datetime):
-            self.started_at = datetime.fromisoformat(self.started_at)
-
-        if not isinstance(self.completed_at, datetime):
-            self.completed_at = datetime.fromisoformat(self.completed_at)

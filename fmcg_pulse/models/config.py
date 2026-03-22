@@ -6,7 +6,7 @@ from enum import StrEnum
 from pathlib import Path
 
 
-def _coerce_attr_dict(cls, instance):
+def _coerce_attr_dict(cls: type["AppConfig"], instance: object) -> None:
     """Coerce dict-valued attributes into their declared dataclass types."""
     for field_name, constructor in cls.__annotations__.items():
         value = getattr(instance, field_name)
@@ -59,7 +59,7 @@ class PathsConfig:
     output_dir: Path
     logs_dir: Path
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Normalize all paths to Path objects."""
         self.raw_dir = Path(self.raw_dir)
         self.output_dir = Path(self.output_dir)
@@ -84,9 +84,9 @@ class LoggingConfig:
     standard_format: str
     json_format: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Coerce log_level into a LogLevel enum if provided as a string."""
-        if not isinstance(self.log_level, LogLevel):
+        if not isinstance(self.log_level, LogLevel):  # type: ignore
             self.log_level = LogLevel(self.log_level)
 
 
@@ -99,8 +99,10 @@ class GenerationConfig:
     start_date: date
     end_date: date
 
-    def __post_init__(self):
-        """Coerce dates and validate chronological order."""
+    def __post_init__(self) -> None:
+        """Coerce numeric fields, dates, and validate chronological order."""
+        self.n_transactions = int(self.n_transactions)
+        self.n_products = int(self.n_products)
         start, end = _coerce_date_range(self.start_date, self.end_date)
         if start is None or end is None:
             raise ValueError("start_date and end_date are required.")
@@ -116,14 +118,17 @@ class QualityConfig:
     min_price: float
     max_price: float
 
-    def __post_init__(self):
-        """Validate numeric ranges and semantic constraints."""
+    def __post_init__(self) -> None:
+        """Coerce numeric fields to their target types and validate ranges."""
+        self.max_null_pct = float(self.max_null_pct)
+        self.min_transactions = int(self.min_transactions)
+        self.min_price = float(self.min_price)
+        self.max_price = float(self.max_price)
+
         if not (0 < self.max_null_pct <= 1):
             raise ValueError("max_null_pct must be between 0 and 1.")
-
         if self.min_transactions <= 0:
             raise ValueError("min_transactions must be > 0.")
-
         if self.min_price <= 0:
             raise ValueError("min_price must be > 0.")
         if self.max_price <= 0:
@@ -150,7 +155,7 @@ class ReportFilters:
     date_from: date | None = None
     date_to: date | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Coerce dates and validate chronological order."""
         self.date_from, self.date_to = _coerce_date_range(self.date_from, self.date_to)
 
@@ -161,11 +166,11 @@ class Report:
 
     name: str
     dimensions: list[str]
-    partition_by: str | list[str] | None = None
+    partition_by: list[str] | None = None
     time_grain: TimeGrain | None = None
     filters: ReportFilters | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate and normalize all Report fields.
 
         Checks name and dimensions, normalizes and validates partition_by,
@@ -173,14 +178,13 @@ class Report:
         """
         if not self.name:
             raise ValueError("Report name cannot be empty.")
-
         if not self.dimensions:
             raise ValueError(f"Report '{self.name}' must have at least one dimension.")
         if len(self.dimensions) != len(set(self.dimensions)):
             raise ValueError(f"Report '{self.name}' has duplicate dimensions.")
 
         if self.partition_by is not None:
-            if not isinstance(self.partition_by, list):
+            if not isinstance(self.partition_by, list):  # type: ignore
                 self.partition_by = [self.partition_by]
             if not self.partition_by:  # empty list after normalization
                 self.partition_by = None
@@ -198,11 +202,11 @@ class Report:
                         f"not in dimensions: {invalid}."
                     )
 
-        if self.time_grain is not None and not isinstance(self.time_grain, TimeGrain):
+        if self.time_grain is not None and not isinstance(self.time_grain, TimeGrain):  # type: ignore
             self.time_grain = TimeGrain(self.time_grain)
 
-        if self.filters is not None and not isinstance(self.filters, ReportFilters):
-            self.filters = ReportFilters(**self.filters)
+        if self.filters is not None and not isinstance(self.filters, ReportFilters):  # type: ignore
+            self.filters = ReportFilters(**self.filters)  # type: ignore
         if (
             isinstance(self.filters, ReportFilters)
             and self.filters.date_from is None
@@ -217,13 +221,12 @@ class ReportingConfig:
 
     reports: list[Report]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Coerce dicts into Report objects and enforce unique names."""
         self.reports = [
-            Report(**report) if isinstance(report, dict) else report
+            report if isinstance(report, Report) else Report(**report)  # type: ignore
             for report in self.reports
         ]
-
         names = [report.name for report in self.reports]
         if len(names) != len(set(names)):
             raise ValueError("Duplicate report names found in reporting config.")
@@ -240,6 +243,6 @@ class AppConfig:
     quality: QualityConfig
     reporting: ReportingConfig
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Coerce nested dicts into their respective dataclass types."""
         _coerce_attr_dict(AppConfig, self)

@@ -32,7 +32,7 @@ def setup_logging(
     """
     ts = started_at.strftime("%Y-%m-%d_%H%M%S")
 
-    config = {
+    config: dict[str, object] = {
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {

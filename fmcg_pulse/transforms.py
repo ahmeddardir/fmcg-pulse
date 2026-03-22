@@ -6,7 +6,11 @@ build_report() applies filters, derives time-grain periods, aggregates fixed
 metrics, and computes market-share percentages across optional partitions.
 """
 
+# pyright: reportUnknownVariableType=false
+# pyright: reportUnknownMemberType=false
+
 import logging
+from collections.abc import Callable
 
 import polars as pl
 
@@ -15,7 +19,7 @@ from fmcg_pulse.models.config import Report
 logger = logging.getLogger(__name__)
 
 
-_GRAIN_MAP = {
+_GRAIN_MAP: dict[str, Callable[[pl.Expr], pl.Expr]] = {
     "day": lambda c: c.cast(pl.String),
     "week": lambda c: c.dt.strftime("%G-W%V"),
     "month": lambda c: c.dt.strftime("%Y-%m"),
@@ -69,7 +73,7 @@ def build_report(enriched_df: pl.DataFrame, report: Report) -> pl.DataFrame:
     Args:
         enriched_df (pl.DataFrame):
             A DataFrame containing joined transaction and product attributes.
-            Must include at least: date, unit_price, quantity, category.
+            Must include at least: trn_date, unit_price, quantity, category.
         report (Report):
             A configuration object defining:
                 - dimensions: grouping columns
@@ -94,16 +98,16 @@ def build_report(enriched_df: pl.DataFrame, report: Report) -> pl.DataFrame:
 
     if report.filters is not None:
         if report.filters.date_from is not None:
-            report_df = report_df.filter(pl.col("date") >= report.filters.date_from)
+            report_df = report_df.filter(pl.col("trn_date") >= report.filters.date_from)
         if report.filters.date_to is not None:
-            report_df = report_df.filter(pl.col("date") <= report.filters.date_to)
+            report_df = report_df.filter(pl.col("trn_date") <= report.filters.date_to)
 
     if report.time_grain is not None:
         if report.time_grain not in _GRAIN_MAP:
             raise ValueError(f"Unsupported time_grain: {report.time_grain}")
 
         pl_expr = _GRAIN_MAP[report.time_grain]
-        report_df = report_df.with_columns(pl_expr(pl.col("date")).alias("period"))
+        report_df = report_df.with_columns(pl_expr(pl.col("trn_date")).alias("period"))
 
         groupby_cols.append("period")
         if partition_cols is not None:
