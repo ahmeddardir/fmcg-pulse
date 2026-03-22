@@ -1,9 +1,10 @@
 """Reporting transformations.
 
 Provides utilities for enriching transaction data and building analytical
-reports. build_enriched() joins transactions with product attributes, while
-build_report() applies filters, derives time-grain periods, aggregates fixed
-metrics, and computes market-share percentages across optional partitions.
+reports. build_enriched() joins transactions with product attributes and
+preserves unmatched rows for downstream validation. build_report() applies
+filters, derives time-grain periods, aggregates fixed metrics, and computes
+market-share percentages across optional partitions.
 """
 
 # pyright: reportUnknownVariableType=false
@@ -35,44 +36,48 @@ _GRAIN_MAP: dict[str, Callable[[pl.Expr], pl.Expr]] = {
 
 def build_enriched(
     transactions_lf: pl.LazyFrame, products_lf: pl.LazyFrame
-) -> pl.DataFrame:
+) -> tuple[pl.DataFrame, int]:
     """Perform a left join between transactions and products and return a DataFrame.
 
     Enriches transaction records with product attributes by joining on the shared
     'barcode' column. Both inputs are LazyFrames, and the final result is collected
-    into a materialized DataFrame.
+    into a materialized DataFrame. Unmatched rows are not dropped.
 
     Args:
         transactions_lf (pl.LazyFrame): LazyFrame containing transaction records.
         products_lf (pl.LazyFrame): LazyFrame containing product metadata.
 
     Returns:
-        pl.DataFrame: A DataFrame containing transactions enriched with product fields.
+        tuple[pl.DataFrame, int]:
+            The enriched DataFrame and the count of unmatched barcodes.
 
     """
-    enriched = (
+    enriched_df = (
         transactions_lf.join(products_lf, on="barcode", how="left")
         .drop("ref_price")
         .collect()
     )
-    unmatched = enriched.filter(pl.col("category").is_null()).height
+    unmatched_count = enriched_df.select(pl.col("category").is_null().sum()).item()
     logger.debug(
-        "enriched dataset: %d rows, %d unmatched barcodes", len(enriched), unmatched
+        "enriched dataset: %d rows, %d unmatched barcodes",
+        len(enriched_df),
+        unmatched_count,
     )
-    return enriched
+    return enriched_df, unmatched_count
 
 
 def build_report(enriched_df: pl.DataFrame, report: Report) -> pl.DataFrame:
     """Build an aggregated analytical report from enriched transaction data.
 
-    This function applies optional date filters, derives a time-grain period
-    (day/week/month/quarter), groups the dataset by the configured dimensions,
-    computes fixed commercial metrics, and calculates market share percentages
-    either globally or within user-defined partitions.
+    Applies optional date filters, derives a time-grain period (day/week/month/quarter).
+    Groups the dataset by the configured dimensions and computes a fixed set of metrics.
+    Computes market share percentages either globally or within the defined partitions.
+    Assumes the provided DataFrame is clean, with no unmatched rows (i.e. no null
+    product columns from the enrichment join).
 
     Args:
         enriched_df (pl.DataFrame):
-            A DataFrame containing joined transaction and product attributes.
+            A clean DataFrame containing joined transaction and product attributes.
             Must include at least: trn_date, unit_price, quantity, category.
         report (Report):
             A configuration object defining:
@@ -89,25 +94,27 @@ def build_report(enriched_df: pl.DataFrame, report: Report) -> pl.DataFrame:
                 - market_share_pct
 
     """
-    report_df = enriched_df.filter(pl.col("category").is_not_null())
-    dropped = len(enriched_df) - len(report_df)
-    logger.debug("report %s: dropped %d unmatched rows", report.name, dropped)
-
     groupby_cols = []
     partition_cols = [] if report.partition_by is not None else None
 
     if report.filters is not None:
         if report.filters.date_from is not None:
-            report_df = report_df.filter(pl.col("trn_date") >= report.filters.date_from)
+            enriched_df = enriched_df.filter(
+                pl.col("trn_date") >= report.filters.date_from
+            )
         if report.filters.date_to is not None:
-            report_df = report_df.filter(pl.col("trn_date") <= report.filters.date_to)
+            enriched_df = enriched_df.filter(
+                pl.col("trn_date") <= report.filters.date_to
+            )
 
     if report.time_grain is not None:
         if report.time_grain not in _GRAIN_MAP:
             raise ValueError(f"Unsupported time_grain: {report.time_grain}")
 
         pl_expr = _GRAIN_MAP[report.time_grain]
-        report_df = report_df.with_columns(pl_expr(pl.col("trn_date")).alias("period"))
+        enriched_df = enriched_df.with_columns(
+            pl_expr(pl.col("trn_date")).alias("period")
+        )
 
         groupby_cols.append("period")
         if partition_cols is not None:
@@ -126,16 +133,20 @@ def build_report(enriched_df: pl.DataFrame, report: Report) -> pl.DataFrame:
         .sum()
         .truediv(pl.col("quantity").sum()),
     }
-    logger.debug("report %s: %d rows entering aggregation", report.name, len(report_df))
-    report_df = report_df.group_by(groupby_cols).agg(metrics)
-    logger.debug("report %s: %d groups after aggregation", report.name, len(report_df))
+    logger.debug(
+        "report %s: %d rows entering aggregation", report.name, len(enriched_df)
+    )
+    enriched_df = enriched_df.group_by(groupby_cols).agg(metrics)
+    logger.debug(
+        "report %s: %d groups after aggregation", report.name, len(enriched_df)
+    )
 
     if partition_cols is not None:
         denom = pl.col("total_revenue").sum().over(partition_cols)
     else:
         denom = pl.col("total_revenue").sum().over()
 
-    return report_df.with_columns(
+    return enriched_df.with_columns(
         pl.col("total_revenue")
         .truediv(denom)
         .mul(100)
