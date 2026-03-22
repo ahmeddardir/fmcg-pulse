@@ -11,8 +11,8 @@ A simulated FMCG retail analytics pipeline. Synthetic supermarket transaction da
   └── Faker + random -> synthetic transactions CSV + product catalog JSON
 
 [Ingestion Layer]
-  └── Generator-based CSV reader
-  └── JSON deserializer for product catalog
+  └── LazyFrame scan functions for NDJSON and CSV (Polars)
+  └── Schema enforcement at the scan boundary
 
 [Transformation Layer - Polars]
   └── Schema validation with type hints
