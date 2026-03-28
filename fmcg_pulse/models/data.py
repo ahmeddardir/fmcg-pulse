@@ -92,6 +92,7 @@ class Status(StrEnum):
 
     SUCCESS = "SUCCESS"
     FAILURE = "FAILURE"
+    PARTIAL = "PARTIAL"
 
 
 @dataclass
