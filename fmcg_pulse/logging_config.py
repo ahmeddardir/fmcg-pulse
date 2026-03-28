@@ -8,7 +8,6 @@ Configures three handlers on the root logger:
 
 import logging
 import logging.config
-from datetime import datetime
 from pathlib import Path
 
 from pythonjsonlogger.json import JsonFormatter
@@ -20,18 +19,27 @@ LOG_FMT_JSON = "%(asctime)s %(levelname)s %(name)s %(filename)s %(lineno)d %(mes
 
 
 def setup_logging(
+    run_ts: str,
     log_dir: Path,
-    started_at: datetime,
     log_level: LogLevel = LogLevel.DEBUG,
     log_format_std: str = LOG_FMT_STD,
     log_format_json: str = LOG_FMT_JSON,
 ) -> None:
-    """Configure the root logger.
+    """Configure root logging for a pipeline run.
 
-    Sets up console, rotating text file, and rotating JSON file handlers.
+    Args:
+        run_ts (str):
+            Timestamp string used to version log filenames.
+        log_dir (Path):
+            Directory where log files are written.
+        log_level (LogLevel, optional):
+            Minimum log level applied to all handlers. Defaults to LogLevel.DEBUG.
+        log_format_std (str, optional):
+            Format string for human-readable log output. Defaults to LOG_FMT_STD.
+        log_format_json (str, optional):
+            Format string for structured JSON log output. Defaults to LOG_FMT_JSON.
+
     """
-    ts = started_at.strftime("%Y-%m-%d_%H%M%S")
-
     config: dict[str, object] = {
         "version": 1,
         "disable_existing_loggers": False,
@@ -47,7 +55,7 @@ def setup_logging(
             },
             "file_standard": {
                 "class": "logging.handlers.RotatingFileHandler",
-                "filename": f"{log_dir}/pipeline_{ts}.log",
+                "filename": f"{log_dir}/pipeline_{run_ts}.log",
                 "maxBytes": 10_000_000,
                 "backupCount": 5,
                 "formatter": "standard",
@@ -55,7 +63,7 @@ def setup_logging(
             },
             "file_json": {
                 "class": "logging.handlers.RotatingFileHandler",
-                "filename": f"{log_dir}/pipeline_{ts}.json.log",
+                "filename": f"{log_dir}/pipeline_{run_ts}.json.log",
                 "maxBytes": 10_000_000,
                 "backupCount": 5,
                 "formatter": "json",
