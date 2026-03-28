@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 
 dependencies = [
     "polars>=0.20.0",
-    "prefect>=2.14.0",
+    "prefect>=3.6.0",
     "faker>=22.0.0",
     "pyyaml>=6.0",
     "python-json-logger>=4.0.0",
