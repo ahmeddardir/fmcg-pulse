@@ -112,7 +112,7 @@ Both file handlers use `RotatingFileHandler` with a 10MB cap and 5 backups, boun
 
 Log files are named `pipeline_YYYY-MM-DD_HHMMSS.log` so each run gets its own file and runs never overwrite each other. This makes it possible to correlate a log file with a specific `run_manifest.json` by timestamp.
 
-`str(datetime.now())` produces `2026-03-04 14:30:22.123456`. The space and colons are invalid in filenames on some systems, so `strftime("%Y-%m-%d_%H%M%S")` is used instead to produce a clean, sortable, filesystem-safe string.
+`setup_logging()` receives `run_ts: str` directly rather than a `datetime` object. The timestamp is derived once in the flow at startup and reused across logging, output filenames, and the run manifest.
 
 ### Directory creation
 
@@ -298,3 +298,50 @@ The validator reports results; it does not decide what to do about them. A faili
 ### Logging approach
 
 Computed values (thresholds, actual counts) are logged at `DEBUG` level. Pass/fail results for each check are logged at `INFO` level. The validator does not log at `WARNING` or `ERROR` because it does not consider failures fatal. The pipeline layer owns that judgment.
+
+---
+
+## Orchestration (`orchestration/`)
+
+The orchestration layer is split into two files: `tasks.py` and `pipeline.py`. If additional flows are added later, tasks are already in a shareable module.
+
+### Tasks are intentionally thin
+
+Each task in `tasks.py` wraps a single pipeline step and delegates all business logic to the relevant module. `generate()` calls `generate_all()`. `ingest_enrich()` calls `scan_products()`, `scan_transactions()`, and `build_enriched()`. `validate()` calls `validate_enriched()`. `run_report()` calls `build_report()` and writes the result. `write_manifest()` serializes and writes the `RunManifest`.
+
+### Plain Python startup sequence
+
+Config loading, directory creation, logging setup, and timestamp capture all run as plain Python at the top of the flow before any Prefect tasks execute. These steps are prerequisites for everything else.
+
+### Quality gate
+
+Quality checks act as a hard go/no-go gate for reporting. If any of the three checks fails, the reporting step is skipped entirely and the run is marked `FAILURE`. The manifest is the authoritative source: if it says `SUCCESS`, the CSVs are reliable.
+
+### Parallel report execution
+
+Report tasks are submitted concurrently using `ThreadPoolTaskRunner` and Prefect's `.submit()` pattern:
+
+```python
+future_reports = [
+    run_report.submit(clean_df, report, config.paths.output_dir, run_ts)
+    for report in config.reporting.reports
+]
+for future in future_reports:
+    future.result(raise_on_failure=False)
+```
+
+All report tasks start before any `.result()` is called. `.result(raise_on_failure=False)` means all reports are given the chance to complete regardless of whether any individual one fails.
+
+### No retries on tasks
+
+No task uses `retries`. Retries make sense for flaky external dependencies such as network calls or database connections. All tasks in this pipeline operate on local files and in-memory data.
+
+### `cache_policy=NONE`
+
+All tasks set `cache_policy=NONE`. Without it, Prefect may return a cached result from a previous flow run instead of re-executing the task. Every run generates fresh synthetic data, so returning cached results would be incorrect.
+
+### Three-state run status and flow state alignment
+
+The flow raises after writing the manifest in two cases: if the quality gate failed (`Status.FAILURE`) and if any report tasks failed (`Status.PARTIAL`). This ensures Prefect marks the flow as `FAILED` in both cases, aligning Prefect's run state with the manifest status. Without the raise, Prefect would report the flow as `COMPLETED` even when the manifest says `FAILURE` or `PARTIAL`, which would be misleading in the UI.
+
+The manifest is always written regardless of outcome, so there is always an audit record for every run.
